@@ -868,7 +868,8 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             C3x,
             RepC3,
             RepNCSPELAN4,
-            RepNCSPELAN4_high
+            RepNCSPELAN4_high,
+            C2f_FasterBlock
         ):
             c1, c2 = ch[f], args[0]
             if c2 != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
@@ -880,7 +881,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
                 )  # num heads
 
             args = [c1, c2, *args[1:]]
-            if m in (BottleneckCSP, C1, C2, C2f, C2fAttn, C3, C3TR, C3Ghost, C3x, RepC3):
+            if m in (BottleneckCSP, C1, C2, C2f, C2fAttn, C3, C3TR, C3Ghost, C3x, RepC3,RepNCSPELAN4,RepNCSPELAN4_high,C2f_FasterBlock):
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m is AIFI:

@@ -4,9 +4,11 @@ import numpy as np
 
 __all__ = ['RepNCSPELAN4', 'RepNCSPELAN4_high']
 
-class RepConvN(nn.Module):
-    """RepConv is a basic rep-style block, including training and deploy status"""
 
+class RepConvN(nn.Module):
+    """RepConv is a basic rep-style block, including training and deploy status
+    This code is based on https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py
+    """
     default_act = nn.SiLU()  # default activation
 
     def __init__(self, c1, c2, k=3, s=1, p=1, g=1, d=1, act=True, bn=False, deploy=False):
@@ -16,6 +18,7 @@ class RepConvN(nn.Module):
         self.c1 = c1
         self.c2 = c2
         self.act = self.default_act if act is True else act if isinstance(act, nn.Module) else nn.Identity()
+
         self.bn = None
         self.conv1 = Conv(c1, c2, k, s, p=p, g=g, act=False)
         self.conv2 = Conv(c1, c2, 1, s, p=(p - k // 2), g=g, act=False)
@@ -33,8 +36,7 @@ class RepConvN(nn.Module):
         kernel3x3, bias3x3 = self._fuse_bn_tensor(self.conv1)
         kernel1x1, bias1x1 = self._fuse_bn_tensor(self.conv2)
         kernelid, biasid = self._fuse_bn_tensor(self.bn)
-        return (kernel3x3 + self._pad_1x1_to_3x3_tensor(kernel1x1) + kernelid,
-                bias3x3 + bias1x1 + biasid)
+        return kernel3x3 + self._pad_1x1_to_3x3_tensor(kernel1x1) + kernelid, bias3x3 + bias1x1 + biasid
 
     def _avg_to_3x3_tensor(self, avgp):
         channels = self.c1
@@ -74,9 +76,9 @@ class RepConvN(nn.Module):
             gamma = branch.weight
             beta = branch.bias
             eps = branch.eps
-            std = (running_var + eps).sqrt()
-            t = (gamma / std).reshape(-1, 1, 1, 1)
-            return kernel * t, beta - running_mean * gamma / std
+        std = (running_var + eps).sqrt()
+        t = (gamma / std).reshape(-1, 1, 1, 1)
+        return kernel * t, beta - running_mean * gamma / std
 
     def fuse_convs(self):
         if hasattr(self, 'conv'):
@@ -103,10 +105,10 @@ class RepConvN(nn.Module):
         if hasattr(self, 'id_tensor'):
             self.__delattr__('id_tensor')
 
+
 class RepNBottleneck(nn.Module):
     # Standard bottleneck
-    def __init__(self, c1, c2, shortcut=True, g=1, k=(3, 3), e=0.5):
-        # ch_in, ch_out, shortcut, kernels, groups, expand
+    def __init__(self, c1, c2, shortcut=True, g=1, k=(3, 3), e=0.5):  # ch_in, ch_out, shortcut, kernels, groups, expand
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
         self.cv1 = RepConvN(c1, c_, k[0], 1)
@@ -116,10 +118,10 @@ class RepNBottleneck(nn.Module):
     def forward(self, x):
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
 
+
 class RepNCSP(nn.Module):
     # CSP Bottleneck with 3 convolutions
-    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):
-        # ch_in, ch_out, number, shortcut, groups, expansion
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):  # ch_in, ch_out, number, shortcut, groups, expansion
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
         self.cv1 = Conv(c1, c_, 1, 1)
@@ -130,8 +132,8 @@ class RepNCSP(nn.Module):
     def forward(self, x):
         return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), 1))
 
-def autopad(k, p=None, d=1):
-    # kernel, padding, dilation
+
+def autopad(k, p=None, d=1):  # kernel, padding, dilation
     # Pad to 'same' shape outputs
     if d > 1:
         k = d * (k - 1) + 1 if isinstance(k, int) else [d * (x - 1) + 1 for x in k]  # actual kernel-size
@@ -139,9 +141,9 @@ def autopad(k, p=None, d=1):
         p = k // 2 if isinstance(k, int) else [x // 2 for x in k]  # auto-pad
     return p
 
+
 class Conv(nn.Module):
     # Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)
-
     default_act = nn.SiLU()  # default activation
 
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True):
@@ -155,6 +157,7 @@ class Conv(nn.Module):
 
     def forward_fuse(self, x):
         return self.act(self.conv(x))
+
 
 class RepNCSPELAN4(nn.Module):
     # csp-elan
@@ -178,6 +181,7 @@ class RepNCSPELAN4(nn.Module):
         y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
         return self.cv4(torch.cat(y, 1))
 
+
 class RepNCSPELAN4_high(nn.Module):
     # csp-elan
     def __init__(self, c1, c2, c5=1):  # c5 = repeat
@@ -200,6 +204,7 @@ class RepNCSPELAN4_high(nn.Module):
         y.extend(m(y[-1]) for m in [self.cv2, self.cv3])
         return self.cv4(torch.cat(y, 1))
 
+
 if __name__ == "__main__":
     # Generating Sample image
     image_size = (1, 24, 224, 224)
@@ -207,5 +212,6 @@ if __name__ == "__main__":
 
     # Model
     mobilenet_v1 = RepNCSPELAN4(24, 24, 128, 64, 1)
+
     out = mobilenet_v1(image)
     print(out.size())

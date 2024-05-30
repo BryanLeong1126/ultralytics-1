@@ -1,7 +1,4 @@
 # Ultralytics YOLO 🚀, AGPL-3.0 license
-import torch
-import torch.nn as nn
-from timm.models.layers import DropPath
 
 class Faster_Block_EMA(nn.Module):
     def __init__(self, inc, dim, n_div=4, mlp_ratio=2, drop_path=0.1, layer_scale_init_value=0.0, pconv_fw_type='split_cat'):
